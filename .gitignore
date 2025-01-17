@@ -1,0 +1,4 @@
+.idea
+cmake-build-debug
+include
+lib-vc2019
