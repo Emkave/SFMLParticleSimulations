@@ -10,6 +10,7 @@ add_executable(TheBigBangSFML main.cu
         particle.h
         thread_pool.h
         thread_safe_queue.h
+        registers.h
 )
 
 set_target_properties(TheBigBangSFML PROPERTIES
