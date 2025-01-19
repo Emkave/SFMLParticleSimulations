@@ -4,11 +4,7 @@
 #include <thread_safe_queue.h>
 #include <registers.h>
 #include <vld.h>
-#include <iostream>
-#include <queue>
 #include <mutex>
-
-
 
 using namespace sf;
 
@@ -98,7 +94,7 @@ __global__ void tbb::launch_simulation(float * particle_data_stream, const size_
     }
 }
 
-void task_distributor(thread_pool & pool, std::atomic<bool> & running) {
+void task_distributor(thread_pool & pool, const std::atomic<bool> & running) {
     while (running) {
         cudaMemcpy(tbb::particle::get_host_particles_data_stream(), tbb::particle::get_device_particles_data_stream(), tbb::particle::get_instance_count() * 7 * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -113,10 +109,21 @@ void task_distributor(thread_pool & pool, std::atomic<bool> & running) {
 }
 
 
+void simulation_handler(const std::atomic<bool> & running, const size_t blocks_per_grid) {
+    while (running) {
+        tbb::launch_simulation<<<blocks_per_grid, threads_per_block>>>(
+        tbb::particle::get_device_particles_data_stream(),
+        tbb::particle::get_instance_count());
+        cudaDeviceSynchronize();
+    }
+}
+
+
 int main() {
     srand(time(nullptr));
 
     RenderWindow window (VideoMode(1920, 1080), "The Big Bang");
+    window.setFramerateLimit(120);
 
     thread_pool pool (std::thread::hardware_concurrency());
     std::atomic<bool> running (true);
@@ -126,10 +133,10 @@ int main() {
 
     cudaMemcpy(tbb::particle::get_device_particles_data_stream(), tbb::particle::get_host_particles_data_stream(), tbb::particle::get_instance_count() * 7 * sizeof(float), cudaMemcpyHostToDevice);
 
-    constexpr size_t threads_per_block = 256;
     const size_t blocks_per_grid = (tbb::particle::get_instance_count() + threads_per_block - 1) / threads_per_block;
 
     std::thread distributor_thread1(task_distributor, std::ref(pool), std::ref(running));
+    std::thread simulator_handler_thread(simulation_handler, std::ref(running), std::ref(blocks_per_grid));
 
     while (window.isOpen()) {
         Event event {};
@@ -138,13 +145,6 @@ int main() {
                 window.close();
             }
         }
-
-        tbb::launch_simulation<<<blocks_per_grid, threads_per_block>>>(
-            tbb::particle::get_device_particles_data_stream(),
-            tbb::particle::get_instance_count()
-        );
-
-        //cudaDeviceSynchronize();
 
         window.clear(Color::Black);
 
@@ -157,6 +157,7 @@ int main() {
 
     running = false;
     distributor_thread1.join();
+    simulator_handler_thread.join();
     tbb::particle::cleanup();
     return 0;
 }
