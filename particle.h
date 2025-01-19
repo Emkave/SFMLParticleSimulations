@@ -88,43 +88,6 @@ namespace tbb {
     __global__ void launch_simulation(float * particle_data_stream, const size_t particles_num);
 
     inline void particle::load_particles() {
-        /*tbb::particle::get_instances()[0] = std::make_unique<tbb::particle>(
-            WIN_WIDTH / 2,
-            WIN_HEIGHT / 2,
-            .7f,
-            -0.4f,
-            10,
-            200,
-            0.8
-            );
-        tbb::particle::get_instances()[1] = std::make_unique<tbb::particle>(
-            WIN_WIDTH / 2 + 33,
-            WIN_HEIGHT / 2 - 13,
-            .4f,
-            .4f,
-            14,
-            200,
-            0.8
-            );
-        tbb::particle::get_instances()[2] = std::make_unique<tbb::particle>(
-            WIN_WIDTH / 2 - 47,
-            WIN_HEIGHT / 2 + 69,
-            -.9f,
-            0.4f,
-            10,
-            200,
-            0.8
-            );
-        tbb::particle::get_instances()[3] = std::make_unique<tbb::particle>(
-            WIN_WIDTH / 2 - 102,
-            WIN_HEIGHT / 2 - 33,
-            -.2f,
-            0.9f,
-            10,
-            200,
-            0.8
-            );*/
-
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> angle_dist(0, 2 * M_PI);
