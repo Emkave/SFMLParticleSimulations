@@ -10,7 +10,7 @@
 using namespace sf;
 
 namespace tbb {
-    constexpr size_t max_instances = 4096;
+    constexpr size_t max_instances = 8192;
 
     class particle {
         static std::unique_ptr<tbb::particle> instances[max_instances];
@@ -128,7 +128,10 @@ namespace tbb {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> angle_dist(0, 2 * M_PI);
-        std::uniform_real_distribution<float> speed_dist(0.1, 15.f);
+        std::uniform_real_distribution<float> speed_dist(0.1, 5.f);
+        std::uniform_real_distribution<float> mass_dist (10, 100);
+        std::uniform_real_distribution<float> attr_dist (30, 80);
+        std::uniform_real_distribution<float> rep_dist (10, 50);
         std::uniform_real_distribution<float> displacement_dist(-1, 1);
 
         for (size_t i=0; i<tbb::max_instances; i++) {
@@ -138,9 +141,9 @@ namespace tbb {
             const float speed = speed_dist(gen);
             const float dx = speed * std::cos(theta);
             const float dy = speed * std::sin(theta);
-            const float mass = (rd() % 1000) + 4;
-            const float atr = rd() % 40 + 15;
-            const float rep = (rd() % 10 + 1);
+            const float mass = mass_dist(gen);
+            const float atr = attr_dist(gen);
+            const float rep = rep_dist(gen);
             tbb::particle::get_instances()[i] = std::make_unique<tbb::particle>(x, y, dx, dy, mass, atr, rep);
         }
     }

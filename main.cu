@@ -47,26 +47,33 @@ __global__ void tbb::launch_simulation(float * particle_data_stream, const size_
             }
 
             float distance = sqrtf(dist_x * dist_x + dist_y * dist_y);
-            distance = fmaxf(distance, .1f);
+            distance = fmaxf(distance, .0001f);
 
             float direction_x = dist_x / distance;
             float direction_y = dist_y / distance;
 
-            if (distance <= atr_force_coeff) {
-                float attraction_force = (atr_force_coeff - distance) * mass * other_mass / atr_force_coeff;
+            //if (distance <= atr_force_coeff) {
+                float attraction_force = (atr_force_coeff) * mass * other_mass / distance;
                 force_x += attraction_force * direction_x;
                 force_y += attraction_force * direction_y;
-            }
+            //}
 
-            if (distance <= rep_force_coeff) {
-                float repulsion_force = (rep_force_coeff - distance) * mass * other_mass / rep_force_coeff;
+            //if (distance <= rep_force_coeff) {
+                float repulsion_force = (rep_force_coeff) * mass * other_mass / distance * 2;
                 force_x -= repulsion_force * direction_x;
                 force_y -= repulsion_force * direction_y;
-            }
+            //}
         }
 
-        dx += force_x / 500000;
-        dy += force_y / 500000;
+        dx += force_x / 10000;
+        dy += force_y / 10000;
+
+        float speed = sqrtf(dx * dx + dy * dy);
+        if (speed > 5) {
+            float scale = 1 / speed;
+            dx *= scale;
+            dy *= scale;
+        }
 
         float new_x = (x + dx);
         float new_y = (y + dy);
@@ -91,8 +98,6 @@ __global__ void tbb::launch_simulation(float * particle_data_stream, const size_
     }
 }
 
-
-
 void task_distributor(thread_pool & pool, std::atomic<bool> & running) {
     while (running) {
         cudaMemcpy(tbb::particle::get_host_particles_data_stream(), tbb::particle::get_device_particles_data_stream(), tbb::particle::get_instance_count() * 7 * sizeof(float), cudaMemcpyDeviceToHost);
@@ -104,7 +109,6 @@ void task_distributor(thread_pool & pool, std::atomic<bool> & running) {
                 tbb::particle::get_instances()[i]->get_shape().setPosition(x, y);
             });
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -125,7 +129,7 @@ int main() {
     constexpr size_t threads_per_block = 256;
     const size_t blocks_per_grid = (tbb::particle::get_instance_count() + threads_per_block - 1) / threads_per_block;
 
-    std::thread distributor_thread(task_distributor, std::ref(pool), std::ref(running));
+    std::thread distributor_thread1(task_distributor, std::ref(pool), std::ref(running));
 
     while (window.isOpen()) {
         Event event {};
@@ -152,7 +156,7 @@ int main() {
     }
 
     running = false;
-    distributor_thread.join();
+    distributor_thread1.join();
     tbb::particle::cleanup();
     return 0;
 }
