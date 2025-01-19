@@ -5,7 +5,6 @@
 #include <queue>
 #include <functional>
 #include <condition_variable>
-#include <iostream>
 
 class thread_pool {
 private:
@@ -75,8 +74,5 @@ inline void thread_pool::enqueue(const std::function<void()> & task) {
 
     this->condition.notify_one();
 }
-
-
-
 
 #endif //THREAD_POOL_H
