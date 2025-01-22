@@ -10,12 +10,15 @@
 using namespace sf;
 
 namespace tbb {
-    constexpr size_t max_instances = 8192;
+    constexpr size_t max_instances = 4096;
+
 
     class particle {
         static std::unique_ptr<tbb::particle> instances[max_instances];
         static float * device_particles_data_stream;
-        static float * host_particles_data_stream;
+        static float * device_particles_pos_stream;
+        static float host_particles_init_stream[];
+        static float host_particles_pos_stream[tbb::max_instances*2];
         static size_t instance_num;
 
         CircleShape shape;
@@ -23,39 +26,40 @@ namespace tbb {
 
     public:
          particle(const float x, const float y, const float dx, const float dy, const float mass, const float atr_force, const float rep_force) {
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7] = x;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+1] = y;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+2] = dx;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+3] = dy;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+4] = mass;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+5] = atr_force;
-            tbb::particle::host_particles_data_stream[tbb::particle::instance_num*7+6] = rep_force;
+             tbb::particle::host_particles_pos_stream[tbb::particle::instance_num*2] = x;
+             tbb::particle::host_particles_pos_stream[tbb::particle::instance_num*2+1] = y;
+             tbb::particle::host_particles_init_stream[tbb::particle::instance_num*5] = dx;
+             tbb::particle::host_particles_init_stream[tbb::particle::instance_num*5+1] = dy;
+             tbb::particle::host_particles_init_stream[tbb::particle::instance_num*5+2] = mass;
+             tbb::particle::host_particles_init_stream[tbb::particle::instance_num*5+3] = atr_force;
+             tbb::particle::host_particles_init_stream[tbb::particle::instance_num*5+4] = rep_force;
 
-            this->shape.setRadius(1.0f);
-            this->shape.setPosition(x, y);
-            this->shape.setFillColor(Color::White);
-            tbb::particle::instance_num++;
+             this->shape.setRadius(1.0f);
+             this->shape.setPosition(x, y);
+             this->shape.setFillColor(Color::White);
+             tbb::particle::instance_num++;
         }
 
         ~particle() {
-             if (tbb::particle::instance_num == 0 && tbb::particle::host_particles_data_stream) {
-                 cudaFree(tbb::particle::host_particles_data_stream);
-             }
         }
 
         static void load_particles();
+        static void load_particles_manually();
 
         static void initialize() {
-             if (!tbb::particle::host_particles_data_stream) {
-                tbb::particle::host_particles_data_stream = new float[tbb::max_instances*7];
-                 cudaMalloc(&tbb::particle::device_particles_data_stream, tbb::max_instances * 7 * sizeof(float));
+             if (!tbb::particle::device_particles_data_stream) {
+                 cudaMalloc(&tbb::particle::device_particles_data_stream, tbb::max_instances * 5 * sizeof(float));
              }
-         }
+
+            if (!tbb::particle::device_particles_pos_stream) {
+                cudaMalloc(&tbb::particle::device_particles_pos_stream, tbb::max_instances * 2 * sizeof(float));
+            }
+        }
 
         static void cleanup() {
-             delete[] tbb::particle::host_particles_data_stream;
-             cudaFree(tbb::particle::device_particles_data_stream);
-         }
+            cudaFree(tbb::particle::device_particles_data_stream);
+            cudaFree(tbb::particle::device_particles_pos_stream);
+        }
 
         static inline const size_t get_instance_count() {
             return tbb::particle::instance_num;
@@ -65,13 +69,21 @@ namespace tbb {
             return tbb::particle::instances;
         }
 
-        static float *& get_host_particles_data_stream() {
-            return tbb::particle::host_particles_data_stream;
+        static float * get_host_particles_pos_stream() {
+            return tbb::particle::host_particles_pos_stream;
+        }
+
+        static float * get_host_particles_init_stream() {
+            return tbb::particle::host_particles_init_stream;
         }
 
         static float *& get_device_particles_data_stream() {
              return tbb::particle::device_particles_data_stream;
-         }
+        }
+
+        static float *& get_device_particles_pos_stream() {
+            return tbb::particle::device_particles_pos_stream;
+        }
 
         static constexpr inline size_t get_max_instance_count() {
             return tbb::max_instances;
@@ -82,10 +94,12 @@ namespace tbb {
         }
     };
     size_t tbb::particle::instance_num = 0;
-    float * tbb::particle::host_particles_data_stream = nullptr;
+    float * tbb::particle::device_particles_pos_stream = nullptr;
     float * tbb::particle::device_particles_data_stream = nullptr;
+    float tbb::particle::host_particles_init_stream[tbb::max_instances*5];
+    float tbb::particle::host_particles_pos_stream[tbb::max_instances*2];
     std::unique_ptr<tbb::particle> tbb::particle::instances[max_instances] = {nullptr};
-    __global__ void launch_simulation(float * particle_data_stream, const size_t particles_num);
+
 
     inline void particle::load_particles() {
         std::random_device rd;
@@ -110,6 +124,14 @@ namespace tbb {
             tbb::particle::get_instances()[i] = std::make_unique<tbb::particle>(x, y, dx, dy, mass, atr, rep);
         }
     }
+
+
+    inline void particle::load_particles_manually() {
+        tbb::particle::get_instances()[0] = std::make_unique<tbb::particle>(WIN_WIDTH / 2, WIN_HEIGHT / 2, 0, 0, 100, 50, 10);
+        tbb::particle::get_instances()[1] = std::make_unique<tbb::particle>(WIN_WIDTH / 2 + 20, WIN_HEIGHT / 2 - 10, 0, 0, 10, 10, 1);
+
+    }
+
 
 }
 

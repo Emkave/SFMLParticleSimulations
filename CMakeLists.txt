@@ -11,6 +11,8 @@ add_executable(TheBigBangSFML main.cu
         thread_pool.h
         thread_safe_queue.h
         registers.h
+        simulations.h
+        simulations.cu
 )
 
 set_target_properties(TheBigBangSFML PROPERTIES
