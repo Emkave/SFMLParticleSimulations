@@ -12,6 +12,34 @@ namespace simulation {
         static constexpr void (*function)(float *, float *, const size_t) = simulation1;
     };
 
+    template <> struct simulation_selector<1> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<2> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<3> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<4> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<5> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<6> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
+    template <> struct simulation_selector<7> {
+        static constexpr void (*function)(float *, float *, const size_t) = nullptr;
+    };
+
 
     template <size_t Index> __global__ void launch_simulation(float * particle_data_stream, float * particle_pos_stream, const size_t particles_num) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
