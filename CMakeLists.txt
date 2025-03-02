@@ -12,7 +12,7 @@ add_executable(TheBigBangSFML main.cu
         thread_safe_queue.h
         registers.h
         simulations.h
-        simulations.cu
+        simulation1.cu
 )
 
 set_target_properties(TheBigBangSFML PROPERTIES

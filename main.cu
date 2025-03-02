@@ -9,31 +9,32 @@
 
 using namespace sf;
 
+using particle_class = tbb::particle<particle_class_index>;
 
 void task_distributor(thread_pool & pool, const std::atomic<bool> & running) {
     while (running) {
-        cudaMemcpy(tbb::particle::get_host_particles_pos_stream(), tbb::particle::get_device_particles_pos_stream(), tbb::particle::get_instance_count() * 2 * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(particle_class::get_host_particles_pos_stream(), particle_class::get_device_particles_pos_stream(), particle_class::get_instance_count() * 2 * sizeof(float), cudaMemcpyDeviceToHost);
 
-        for (size_t i=0; i<tbb::particle::get_instance_count(); i++) {
+        for (size_t i=0; i<particle_class::get_instance_count(); i++) {
             pool.enqueue([i] {
-                const float x = tbb::particle::get_host_particles_pos_stream()[i*2];
-                const float y = tbb::particle::get_host_particles_pos_stream()[i*2+1];
-                tbb::particle::get_instances()[i]->get_shape().setPosition(x, y);
+                const float x = particle_class::get_host_particles_pos_stream()[i*2];
+                const float y = particle_class::get_host_particles_pos_stream()[i*2+1];
+                particle_class::get_instances()[i]->get_shape().setPosition(x, y);
             });
         }
     }
 }
 
-
 template <size_t Index> void simulation_handler(const std::atomic<bool> & running, const size_t blocks_per_grid) {
     while (running) {
         simulation::launch_simulation<Index><<<blocks_per_grid, threads_per_block>>>(
-            tbb::particle::get_device_particles_data_stream(),
-            tbb::particle::get_device_particles_pos_stream(),
-            tbb::particle::get_instance_count()
+            particle_class::get_device_particles_data_stream(),
+            particle_class::get_device_particles_pos_stream(),
+            particle_class::get_device_particles_extra_stream(),
+            particle_class::get_instance_count()
         );
         cudaDeviceSynchronize();
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        std::this_thread::sleep_for(std::chrono::microseconds(5));
     }
 }
 
@@ -45,16 +46,13 @@ int main() {
     thread_pool pool (std::thread::hardware_concurrency());
     std::atomic<bool> running (true);
 
-    tbb::particle::initialize();
-    tbb::particle::load_particles();
+    particle_class::load_particles();
+    particle_class::load_to_device();
 
-    cudaMemcpy(tbb::particle::get_device_particles_data_stream(), tbb::particle::get_host_particles_init_stream(), tbb::particle::get_instance_count() * 5 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(tbb::particle::get_device_particles_pos_stream(), tbb::particle::get_host_particles_pos_stream(), tbb::particle::get_instance_count() * 2 * sizeof(float), cudaMemcpyHostToDevice);
-
-    const size_t blocks_per_grid = (tbb::particle::get_instance_count() + threads_per_block - 1) / threads_per_block;
+    const size_t blocks_per_grid = (particle_class::get_instance_count() + threads_per_block - 1) / threads_per_block;
 
     std::thread distributor_thread1(task_distributor, std::ref(pool), std::ref(running));
-    std::thread simulator_handler_thread(simulation_handler<0>, std::ref(running), std::ref(blocks_per_grid));
+    std::thread simulator_handler_thread(simulation_handler<simulation_index>, std::ref(running), std::ref(blocks_per_grid));
 
     while (window.isOpen()) {
         Event event {};
@@ -66,8 +64,8 @@ int main() {
 
         window.clear(Color::Black);
 
-        for (size_t i=0; i<tbb::particle::get_instance_count(); i++) {
-            window.draw(tbb::particle::get_instances()[i]->get_shape());
+        for (size_t i=0; i<particle_class::get_instance_count(); i++) {
+            window.draw(particle_class::get_instances()[i]->get_shape());
         }
 
         window.display();
@@ -76,6 +74,6 @@ int main() {
     running = false;
     distributor_thread1.join();
     simulator_handler_thread.join();
-    tbb::particle::cleanup();
+    particle_class::cleanup();
     return 0;
 }
