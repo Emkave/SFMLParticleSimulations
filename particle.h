@@ -69,7 +69,7 @@ namespace tbb {
 
     template <size_t Index> class particle final {
     protected:
-        static std::unique_ptr<particle> instances[max_particle_instances];
+        static std::unique_ptr<particle> instances[registers::max_particle_instances];
         static void * host_extra_properties_stream;
         static void * device_extra_properties_stream;
         static float * host_particles_init_stream;
@@ -86,20 +86,20 @@ namespace tbb {
             const typename particle_class_selector<Index>::extra_properties & extra_props);
         ~particle() = default;
 
-        inline CircleShape & get_shape();
+        inline CircleShape & get_shape() noexcept;
 
-        static inline float * get_host_particles_pos_stream();
-        static inline float * get_host_particles_init_stream();
-        static inline void * get_host_particles_extra_stream();
-        static inline float * get_device_particles_pos_stream();
-        static inline float * get_device_particles_data_stream();
-        static inline void * get_device_particles_extra_stream();
-        static constexpr inline size_t get_extra_prop_count();
+        static inline float * get_host_particles_pos_stream() noexcept;
+        static inline float * get_host_particles_init_stream() noexcept;
+        static inline void * get_host_particles_extra_stream() noexcept;
+        static inline float * get_device_particles_pos_stream() noexcept;
+        static inline float * get_device_particles_data_stream() noexcept;
+        static inline void * get_device_particles_extra_stream() noexcept;
+        static constexpr inline size_t get_extra_prop_count() noexcept;
         static inline void cleanup();
         static inline void load_to_device();
         static inline void load_particles();
-        static inline size_t get_instance_count();
-        static inline std::unique_ptr<tbb::particle<Index>> * get_instances();
+        static inline size_t get_instance_count() noexcept;
+        static inline std::unique_ptr<tbb::particle<Index>> * get_instances() noexcept;
     };
 
     template <size_t Index> std::unique_ptr<particle<Index>> particle<Index>::instances[] = {nullptr};
@@ -117,15 +117,15 @@ namespace tbb {
         constexpr size_t extra_size = particle_class_selector<Index>::extra_prop_size;
 
         if (!particle::host_particles_pos_stream) {
-            cudaMallocHost(&particle::host_particles_pos_stream, max_particle_instances * 2 * sizeof(float));
+            cudaMallocHost(&particle::host_particles_pos_stream, registers::max_particle_instances * 2 * sizeof(float));
         }
 
         if (!particle::host_particles_init_stream) {
-            cudaMallocHost(&particle::host_particles_init_stream, max_particle_instances * base_size);
+            cudaMallocHost(&particle::host_particles_init_stream, registers::max_particle_instances * base_size);
         }
 
         if (!particle::host_extra_properties_stream) {
-            cudaMallocHost(&particle::host_extra_properties_stream, max_particle_instances * particle_class_selector<Index>::extra_prop_size);
+            cudaMallocHost(&particle::host_extra_properties_stream, registers::max_particle_instances * particle_class_selector<Index>::extra_prop_size);
         }
 
         const size_t pos_offset = particle::instance_num * 2;
@@ -141,7 +141,6 @@ namespace tbb {
         const size_t extra_offset = particle::instance_num * particle_class_selector<Index>::extra_prop_size;
         std::memcpy(static_cast<char*>(particle::host_extra_properties_stream) + extra_offset, &extra_props, extra_size);
 
-
         this->shape.setRadius(1.0f);
         this->shape.setFillColor(Color::White);
         this->shape.setPosition(x, y);
@@ -149,39 +148,39 @@ namespace tbb {
         particle::instance_num++;
     }
 
-    template <size_t Index> inline CircleShape & particle<Index>::get_shape() {
+    template <size_t Index> inline CircleShape & particle<Index>::get_shape() noexcept {
         return this->shape;
     }
 
-    template <size_t Index> inline float * particle<Index>::get_host_particles_pos_stream() {
+    template <size_t Index> inline float * particle<Index>::get_host_particles_pos_stream() noexcept {
         return particle::host_particles_pos_stream;
     }
 
-    template <size_t Index> inline float * particle<Index>::get_host_particles_init_stream() {
+    template <size_t Index> inline float * particle<Index>::get_host_particles_init_stream() noexcept {
         return particle::host_particles_init_stream;
     }
 
-    template<size_t Index> void *particle<Index>::get_host_particles_extra_stream() {
+    template <size_t Index> void *particle<Index>::get_host_particles_extra_stream() noexcept {
         return particle::host_extra_properties_stream;
     }
 
-    template <size_t Index> inline float * particle<Index>::get_device_particles_data_stream() {
+    template <size_t Index> inline float * particle<Index>::get_device_particles_data_stream() noexcept {
         return particle::device_particles_data_stream;
     }
 
-    template <size_t Index> inline float * particle<Index>::get_device_particles_pos_stream() {
+    template <size_t Index> inline float * particle<Index>::get_device_particles_pos_stream() noexcept {
         return particle::device_particles_pos_stream;
     }
 
-    template<size_t Index> void *particle<Index>::get_device_particles_extra_stream() {
+    template <size_t Index> void *particle<Index>::get_device_particles_extra_stream() noexcept {
         return particle::device_extra_properties_stream;
     }
 
-    template<size_t Index> constexpr inline size_t particle<Index>::get_extra_prop_count() {
+    template <size_t Index> constexpr inline size_t particle<Index>::get_extra_prop_count() noexcept {
         return particle_class_selector<Index>::extra_prop_count;
     }
 
-    template <size_t Index> inline void particle<Index>::cleanup() {
+    template <size_t Index> inline void particle<Index>::cleanup() noexcept {
         cudaFreeHost(particle::host_particles_init_stream);
         cudaFreeHost(particle::host_particles_pos_stream);
         cudaFreeHost(particle::host_extra_properties_stream);
@@ -192,39 +191,39 @@ namespace tbb {
 
     template <size_t Index> inline void particle<Index>::load_to_device() {
         if (!particle::device_particles_data_stream) {
-            cudaMalloc(&particle::device_particles_data_stream, max_particle_instances * 4 * sizeof(float));
-            cudaMemcpy(particle::device_particles_data_stream, particle::host_particles_init_stream, max_particle_instances * 4 * sizeof(float), cudaMemcpyHostToDevice);
+            cudaMalloc(&particle::device_particles_data_stream, registers::max_particle_instances * 4 * sizeof(float));
+            cudaMemcpy(particle::device_particles_data_stream, particle::host_particles_init_stream, registers::max_particle_instances * 4 * sizeof(float), cudaMemcpyHostToDevice);
         }
 
         if (!particle::device_particles_pos_stream) {
-            cudaMalloc(&particle::device_particles_pos_stream, max_particle_instances * 2 * sizeof(float));
-            cudaMemcpy(particle::device_particles_pos_stream, particle::host_particles_pos_stream, max_particle_instances * 2 * sizeof(float), cudaMemcpyHostToDevice);
+            cudaMalloc(&particle::device_particles_pos_stream, registers::max_particle_instances * 2 * sizeof(float));
+            cudaMemcpy(particle::device_particles_pos_stream, particle::host_particles_pos_stream, registers::max_particle_instances * 2 * sizeof(float), cudaMemcpyHostToDevice);
         }
 
         if (!particle::device_extra_properties_stream) {
-            cudaMalloc(&particle::device_extra_properties_stream, max_particle_instances * particle_class_selector<Index>::extra_prop_size);
+            cudaMalloc(&particle::device_extra_properties_stream, registers::max_particle_instances * particle_class_selector<Index>::extra_prop_size);
             cudaMemcpy(particle::device_extra_properties_stream, particle::host_extra_properties_stream,
-                max_particle_instances * particle_class_selector<Index>::extra_prop_size, cudaMemcpyHostToDevice);
+                registers::max_particle_instances * particle_class_selector<Index>::extra_prop_size, cudaMemcpyHostToDevice);
         }
     }
 
-    template <size_t Index> inline size_t particle<Index>::get_instance_count() {
+    template <size_t Index> inline size_t particle<Index>::get_instance_count() noexcept {
         return particle::instance_num;
     }
 
-    template <size_t Index> inline std::unique_ptr<tbb::particle<Index>> * particle<Index>::get_instances() {
+    template <size_t Index> inline std::unique_ptr<tbb::particle<Index>> * particle<Index>::get_instances() noexcept {
         return particle::instances;
     }
 
     template <size_t Index> inline void particle<Index>::load_particles() {
         std::random_device rd;
         std::mt19937 gen(rd());
-        const std::uniform_real_distribution<float> angle_dist(-1, 1);
-        const std::uniform_real_distribution<float> speed_dist(0, 0.1);
-        const std::uniform_real_distribution<float> attr_dist (40, 100);
-        const std::uniform_real_distribution<float> rep_dist (0, 20);
+        const std::uniform_real_distribution<float> angle_dist(registers::urd_angle_dist_start, registers::urd_angle_dist_stop);
+        const std::uniform_real_distribution<float> speed_dist(registers::urd_speed_dist_start, registers::urd_speed_dist_stop);
+        const std::uniform_real_distribution<float> attr_dist (registers::urd_attr_dist_start, registers::urd_attr_dist_stop);
+        const std::uniform_real_distribution<float> rep_dist (registers::urd_rep_dist_start, registers::urd_rep_dist_stop);
 
-        for (size_t i=0; i<max_particle_instances; i++) {
+        for (size_t i=0; i<registers::max_particle_instances; i++) {
             const float x = rd() % WIN_WIDTH;
             const float y = rd() % WIN_HEIGHT;
             const float theta = angle_dist(gen);
@@ -235,8 +234,6 @@ namespace tbb {
             const float rep = rep_dist(gen);
 
             typename particle_class_selector<Index>::extra_properties extra_props;
-            generate_random_struct_values(extra_props);
-
             particle::instances[i] = std::make_unique<particle<Index>>(x, y, dx, dy, attr, rep, extra_props);
         }
     }
