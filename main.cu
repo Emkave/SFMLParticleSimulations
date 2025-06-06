@@ -9,7 +9,7 @@
 
 using namespace sf;
 
-using particle_class = tbb::particle<particle_class_index>;
+using particle_class = tbb::particle<registers::particle_class_index>;
 
 void task_distributor(thread_pool & pool, const std::atomic<bool> & running) {
     while (running) {
@@ -27,7 +27,7 @@ void task_distributor(thread_pool & pool, const std::atomic<bool> & running) {
 
 template <size_t Index> void simulation_handler(const std::atomic<bool> & running, const size_t blocks_per_grid) {
     while (running) {
-        simulation::launch_simulation<Index><<<blocks_per_grid, threads_per_block>>>(
+        simulation::launch_simulation<Index><<<blocks_per_grid, registers::threads_per_block>>>(
             particle_class::get_device_particles_data_stream(),
             particle_class::get_device_particles_pos_stream(),
             particle_class::get_device_particles_extra_stream(),
@@ -49,10 +49,10 @@ int main() {
     particle_class::load_particles();
     particle_class::load_to_device();
 
-    const size_t blocks_per_grid = (particle_class::get_instance_count() + threads_per_block - 1) / threads_per_block;
+    const size_t blocks_per_grid = (particle_class::get_instance_count() + registers::threads_per_block - 1) / registers::threads_per_block;
 
     std::thread distributor_thread1(task_distributor, std::ref(pool), std::ref(running));
-    std::thread simulator_handler_thread(simulation_handler<simulation_index>, std::ref(running), std::ref(blocks_per_grid));
+    std::thread simulator_handler_thread(simulation_handler<registers::simulation_index>, std::ref(running), std::ref(blocks_per_grid));
 
     while (window.isOpen()) {
         Event event {};

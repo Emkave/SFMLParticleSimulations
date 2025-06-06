@@ -38,17 +38,17 @@ __device__ void simulation::simulation1(float * particle_data_stream, float * pa
             const float direction_x = dist_x / distance;
             const float direction_y = dist_y / distance;
 
-            if (distance <= atr_force_coeff) {
-                const float attraction_force = (atr_force_coeff) * mass * other_mass / distance;
+            //if (distance <= atr_force_coeff) {
+                const float attraction_force = (atr_force_coeff) / distance;
                 force_x += attraction_force * direction_x;
                 force_y += attraction_force * direction_y;
-            }
+            //}
 
-            if (distance <= rep_force_coeff) {
-                const float repulsion_force = (rep_force_coeff) * mass * other_mass / distance * 10;
+            //if (distance <= rep_force_coeff) {
+                const float repulsion_force = (rep_force_coeff) / distance * 10;
                 force_x -= repulsion_force * direction_x;
                 force_y -= repulsion_force * direction_y;
-            }
+            //}
         }
 
         dx += force_x / 10000;

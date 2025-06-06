@@ -60,7 +60,7 @@ namespace tbb {
 
     template <> struct particle_class_selector<1> {
         struct extra_properties {
-            float mass = 1.0f;
+            float mass = 0.0f;
         };
         static constexpr extra_properties default_properties {};
         static constexpr size_t extra_prop_size = sizeof(extra_properties);
@@ -82,8 +82,7 @@ namespace tbb {
         CircleShape shape;
 
     public:
-        particle(const float x, const float y, const float dx, const float dy, const float attr_dst, const float rep_dst,
-            const typename particle_class_selector<Index>::extra_properties & extra_props);
+        particle(const float x, const float y, const float dx, const float dy, const float attr_dst, const float rep_dst, const typename particle_class_selector<Index>::extra_properties & extra_props);
         ~particle() = default;
 
         inline CircleShape & get_shape() noexcept;
@@ -95,7 +94,7 @@ namespace tbb {
         static inline float * get_device_particles_data_stream() noexcept;
         static inline void * get_device_particles_extra_stream() noexcept;
         static constexpr inline size_t get_extra_prop_count() noexcept;
-        static inline void cleanup();
+        static inline void cleanup() noexcept;
         static inline void load_to_device();
         static inline void load_particles();
         static inline size_t get_instance_count() noexcept;
@@ -111,8 +110,7 @@ namespace tbb {
     template <size_t Index> void * particle<Index>::device_extra_properties_stream = nullptr;
     template <size_t Index> size_t particle<Index>::instance_num = 0;
 
-    template <size_t Index> inline particle<Index>::particle(const float x, const float y, const float dx, const float dy, const float attr_dst, const float rep_dst,
-        const typename particle_class_selector<Index>::extra_properties & extra_props) {
+    template <size_t Index> inline particle<Index>::particle(const float x, const float y, const float dx, const float dy, const float attr_dst, const float rep_dst, const typename particle_class_selector<Index>::extra_properties & extra_props) {
         constexpr size_t base_size = 4 * sizeof(float);
         constexpr size_t extra_size = particle_class_selector<Index>::extra_prop_size;
 
@@ -218,10 +216,10 @@ namespace tbb {
     template <size_t Index> inline void particle<Index>::load_particles() {
         std::random_device rd;
         std::mt19937 gen(rd());
-        const std::uniform_real_distribution<float> angle_dist(registers::urd_angle_dist_start, registers::urd_angle_dist_stop);
-        const std::uniform_real_distribution<float> speed_dist(registers::urd_speed_dist_start, registers::urd_speed_dist_stop);
-        const std::uniform_real_distribution<float> attr_dist (registers::urd_attr_dist_start, registers::urd_attr_dist_stop);
-        const std::uniform_real_distribution<float> rep_dist (registers::urd_rep_dist_start, registers::urd_rep_dist_stop);
+        const std::uniform_real_distribution<float> angle_dist(0, 0);
+        const std::uniform_real_distribution<float> speed_dist(0, 0);
+        const std::uniform_real_distribution<float> attr_dist (4, 50);
+        const std::uniform_real_distribution<float> rep_dist (1, 1);
 
         for (size_t i=0; i<registers::max_particle_instances; i++) {
             const float x = rd() % WIN_WIDTH;
